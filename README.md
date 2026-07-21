@@ -12,6 +12,7 @@ no login, no ads, no limits. Built to deploy to **Netlify** in one click.
   watermarked share file.
 - 🎬 **Full quality** — picks the highest-bitrate / HD source available.
 - 🎵 **Audio + photo posts** — grab the original sound (MP3) or slideshow images.
+- ▶️ **Inline preview** — watch the video on the page before downloading.
 - ⚡ **Fast & free** — no account, no API key, no third-party redirects.
 - 🔎 **SEO-friendly** — the homepage is prerendered to static HTML with meta,
   Open Graph, Twitter, and JSON-LD structured data (zero client framework JS).
@@ -23,11 +24,12 @@ Astro is **static-first**: the homepage is prerendered to plain HTML for fast
 loads and great SEO. The two backend routes opt out of prerendering and run
 on-demand as **Netlify Functions** — no persistent server, no API key.
 
-- `POST /api/download` — resolves short links, extracts the video id, and
-  queries TikTok's mobile feed API to get the clean, no-watermark URL plus
-  metadata (`src/pages/api/download.ts`).
+- `POST /api/download` — resolves the link through a key-less public resolver
+  (tikwm), falling back to TikTok's mobile feed API, and returns the clean,
+  no-watermark URL plus metadata (`src/pages/api/download.ts`).
 - `GET /api/stream` — proxies the chosen media through the function so the
-  browser saves it as a file (with a clean filename) instead of opening it.
+  browser saves it as a file (with a clean filename) instead of opening it;
+  with `?inline=1` it serves images (poster/avatar/thumbnails) for display.
   The proxy is locked to TikTok CDN hosts to avoid open-proxy abuse
   (`src/pages/api/stream.ts`).
 
