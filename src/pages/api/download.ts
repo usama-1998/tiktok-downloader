@@ -1,10 +1,5 @@
 import type { APIRoute } from "astro";
-import {
-  resolveFinalUrl,
-  extractAwemeId,
-  fetchAweme,
-  buildResult,
-} from "../../lib/tiktok";
+import { resolve } from "../../lib/tiktok";
 
 // Opt out of prerendering: this runs on-demand as a Netlify Function.
 export const prerender = false;
@@ -30,25 +25,17 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    const finalUrl = await resolveFinalUrl(rawUrl);
-    const awemeId = extractAwemeId(finalUrl) || extractAwemeId(rawUrl);
-    if (!awemeId) {
-      return json({ error: "Could not find a video id in that link." }, 422);
-    }
-
-    const aweme = await fetchAweme(awemeId);
-    if (!aweme) {
+    const result = await resolve(rawUrl);
+    if (!result) {
       return json(
         {
           error:
-            "TikTok did not return the video. It may be private, " +
-            "region-locked, or removed. Please try again.",
+            "Couldn't fetch this video. It may be private, region-locked, " +
+            "or removed. Please check the link and try again.",
         },
         502
       );
     }
-
-    const result = buildResult(aweme);
     if (!result.video.noWatermark && result.images.length === 0) {
       return json({ error: "No downloadable media found for this post." }, 502);
     }

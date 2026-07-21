@@ -1,6 +1,9 @@
-// Shared TikTok resolver used by the API routes. It talks to TikTok's mobile
-// feed API, whose `play_addr` field is the clean, no-watermark, full-quality
-// source (as opposed to the watermarked `download_addr` share file).
+// TikTok resolver used by the API routes.
+//
+// TikTok's own mobile feed API now requires signed requests (X-Gorgon/X-Argus)
+// and returns nothing for unsigned calls, so we resolve through a public,
+// key-less resolver (tikwm) as the primary path and fall back to the mobile
+// API. Both return the clean, no-watermark, full-quality source.
 
 export const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -29,6 +32,87 @@ export interface DownloadResult {
   video: { noWatermark: string | null; watermark: string | null };
   images: string[];
 }
+
+/** Turn a possibly-relative resolver URL into an absolute one. */
+function absolutize(u: string | null | undefined, base: string): string | null {
+  if (!u || typeof u !== "string") return null;
+  if (u.startsWith("//")) return "https:" + u;
+  if (u.startsWith("/")) return base.replace(/\/$/, "") + u;
+  if (/^https?:\/\//.test(u)) return u;
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Primary path: tikwm public API (no key, resolves short links itself).
+// ---------------------------------------------------------------------------
+
+const TIKWM_BASE = "https://www.tikwm.com";
+
+export async function fetchViaTikwm(
+  rawUrl: string
+): Promise<DownloadResult | null> {
+  const endpoint = `${TIKWM_BASE}/api/?hd=1&url=${encodeURIComponent(rawUrl)}`;
+  let data: any;
+  try {
+    const res = await fetch(endpoint, {
+      headers: {
+        "User-Agent": DESKTOP_UA,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const body = await res.json();
+    if (!body || body.code !== 0 || !body.data) return null;
+    data = body.data;
+  } catch {
+    return null;
+  }
+
+  const author = data.author || {};
+  const musicInfo = data.music_info || {};
+
+  const images: string[] = Array.isArray(data.images)
+    ? data.images.map((u: string) => absolutize(u, TIKWM_BASE)).filter(Boolean)
+    : [];
+
+  const noWatermark =
+    absolutize(data.hdplay, TIKWM_BASE) || absolutize(data.play, TIKWM_BASE);
+
+  return {
+    id: String(data.id ?? ""),
+    description: data.title || "",
+    createTime: data.create_time ?? null,
+    author: {
+      name: author.nickname || "",
+      username: author.unique_id || "",
+      avatar: absolutize(author.avatar, TIKWM_BASE),
+    },
+    music: {
+      title: musicInfo.title || "",
+      author: musicInfo.author || "",
+      url: absolutize(data.music || musicInfo.play, TIKWM_BASE),
+    },
+    stats: {
+      likes: data.digg_count ?? null,
+      comments: data.comment_count ?? null,
+      shares: data.share_count ?? null,
+      plays: data.play_count ?? null,
+    },
+    cover: absolutize(data.cover || data.origin_cover, TIKWM_BASE),
+    duration: data.duration ?? null,
+    width: null,
+    height: null,
+    video: {
+      noWatermark,
+      watermark: absolutize(data.wmplay, TIKWM_BASE),
+    },
+    images,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fallback path: TikTok mobile feed API (unsigned; may return nothing).
+// ---------------------------------------------------------------------------
 
 /** Follow redirects on short links (vt.tiktok.com / vm.tiktok.com). */
 export async function resolveFinalUrl(url: string): Promise<string> {
@@ -92,9 +176,7 @@ export async function fetchAweme(awemeId: string): Promise<any | null> {
       });
       if (!res.ok) continue;
       const data = await res.json();
-      const aweme = data?.aweme_list?.find(
-        (a: any) => a.aweme_id === awemeId
-      );
+      const aweme = data?.aweme_list?.find((a: any) => a.aweme_id === awemeId);
       if (aweme) return aweme;
     } catch {
       // try next endpoint
@@ -156,7 +238,27 @@ export function buildResult(aweme: any): DownloadResult {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Orchestrator: try the reliable resolver first, then the mobile API.
+// ---------------------------------------------------------------------------
+
+export async function resolve(rawUrl: string): Promise<DownloadResult | null> {
+  const primary = await fetchViaTikwm(rawUrl);
+  if (primary && (primary.video.noWatermark || primary.images.length)) {
+    return primary;
+  }
+
+  const finalUrl = await resolveFinalUrl(rawUrl);
+  const awemeId = extractAwemeId(finalUrl) || extractAwemeId(rawUrl);
+  if (!awemeId) return primary; // may still be a partial primary result
+  const aweme = await fetchAweme(awemeId);
+  if (!aweme) return primary;
+  return buildResult(aweme);
+}
+
 /** Host allow-list for the streaming proxy (prevents open-proxy abuse). */
 export function isAllowedMediaHost(host: string): boolean {
-  return /(tiktok|tiktokcdn|ibyteimg|byteoversea|muscdn)\.com$/i.test(host);
+  return /(tiktok|tiktokcdn|ibyteimg|byteoversea|muscdn|tikwm|akamaized)\.(com|net)$/i.test(
+    host
+  );
 }
