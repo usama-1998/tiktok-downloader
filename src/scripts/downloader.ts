@@ -60,6 +60,12 @@ function streamUrl(src: string, filename: string): string {
   )}`;
 }
 
+// Serve an image (poster/avatar/thumbnail) inline through our proxy so
+// referer-locked TikTok CDN images still load in the browser.
+function inlineUrl(src: string | null): string {
+  return src ? `/api/stream?inline=1&url=${encodeURIComponent(src)}` : "";
+}
+
 pasteBtn.addEventListener("click", async () => {
   try {
     const text = await navigator.clipboard.readText();
@@ -114,7 +120,7 @@ function render(data: DownloadResult) {
   durEl.textContent = fmtDuration(data.duration);
   durEl.hidden = !data.duration;
 
-  $<HTMLImageElement>("avatar").src = data.author.avatar || "";
+  $<HTMLImageElement>("avatar").src = inlineUrl(data.author.avatar);
   $("author-name").textContent = data.author.name || "Unknown";
   $("author-user").textContent = data.author.username
     ? "@" + data.author.username
@@ -143,7 +149,7 @@ function render(data: DownloadResult) {
     dlVideo.hidden = false;
     dlVideo.href = streamUrl(data.video.noWatermark, baseName);
     player.src = data.video.noWatermark;
-    if (data.cover) player.poster = data.cover;
+    if (data.cover) player.poster = inlineUrl(data.cover);
     player.hidden = false;
     cover.hidden = true;
     imagesGrid.hidden = true;
@@ -161,10 +167,10 @@ function render(data: DownloadResult) {
         (src, i) =>
           `<a href="${streamUrl(src, `${baseName}_${i + 1}`)}" download title="Download image ${
             i + 1
-          }"><img src="${src}" alt="Image ${i + 1}" loading="lazy" /></a>`
+          }"><img src="${inlineUrl(src)}" alt="Image ${i + 1}" loading="lazy" /></a>`
       )
       .join("");
-    cover.src = data.images[0];
+    cover.src = inlineUrl(data.images[0]);
     cover.hidden = false;
   }
 

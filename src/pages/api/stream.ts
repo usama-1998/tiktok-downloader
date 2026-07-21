@@ -17,6 +17,10 @@ export const GET: APIRoute = async ({ url }) => {
     /[^\w.-]/g,
     "_"
   );
+  // `inline=1` serves the media for display (poster, avatar, thumbnails)
+  // instead of forcing a download. Used for images that are referer-locked on
+  // TikTok's CDN and so can't be loaded directly by the browser.
+  const inline = url.searchParams.get("inline") === "1";
 
   if (!src || !/^https?:\/\//.test(src)) {
     return new Response("Invalid url", { status: 400 });
@@ -60,8 +64,11 @@ export const GET: APIRoute = async ({ url }) => {
 
     const headers = new Headers({
       "Content-Type": type,
-      "Content-Disposition": `attachment; filename="${filename}.${ext}"`,
-      "Cache-Control": "no-store",
+      "Content-Disposition": inline
+        ? "inline"
+        : `attachment; filename="${filename}.${ext}"`,
+      // Inline assets (posters/thumbnails) can be cached; downloads shouldn't.
+      "Cache-Control": inline ? "public, max-age=86400" : "no-store",
     });
     // Deliberately no Content-Length: a mismatch can truncate a streamed body.
 
