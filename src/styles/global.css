@@ -15,6 +15,12 @@
   box-sizing: border-box;
 }
 
+/* The `hidden` attribute must win over component `display` rules (e.g. the
+   result card's `display: flex`), otherwise toggled elements show on load. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -242,13 +248,17 @@ main {
   flex-shrink: 0;
   width: 200px;
 }
-.result-media img {
+.result-media img,
+.result-media .player {
   width: 100%;
   border-radius: 12px;
   display: block;
   aspect-ratio: 9 / 16;
   object-fit: cover;
-  background: var(--card-2);
+  background: #000;
+}
+.result-media .player {
+  outline: none;
 }
 .duration-pill {
   position: absolute;

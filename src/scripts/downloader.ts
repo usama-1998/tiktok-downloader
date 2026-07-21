@@ -76,6 +76,9 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearError();
   resultEl.hidden = true;
+  // Stop any previously playing video so its audio doesn't linger.
+  const prevPlayer = document.getElementById("player") as HTMLVideoElement | null;
+  if (prevPlayer) prevPlayer.pause();
 
   const url = urlInput.value.trim();
   if (!url) return;
@@ -107,7 +110,6 @@ form.addEventListener("submit", async (e) => {
 function render(data: DownloadResult) {
   const baseName = `tiktok_${data.author.username || data.id}`;
 
-  $<HTMLImageElement>("cover").src = data.cover || "";
   const durEl = $<HTMLSpanElement>("duration");
   durEl.textContent = fmtDuration(data.duration);
   durEl.hidden = !data.duration;
@@ -132,16 +134,27 @@ function render(data: DownloadResult) {
 
   const dlVideo = $<HTMLAnchorElement>("dl-video");
   const imagesGrid = $<HTMLDivElement>("images-grid");
+  const player = $<HTMLVideoElement>("player");
+  const cover = $<HTMLImageElement>("cover");
 
   if (data.video.noWatermark) {
+    // Play inline from the direct media URL (streams/seeks natively); download
+    // still routes through /api/stream to force an attachment save.
     dlVideo.hidden = false;
     dlVideo.href = streamUrl(data.video.noWatermark, baseName);
+    player.src = data.video.noWatermark;
+    if (data.cover) player.poster = data.cover;
+    player.hidden = false;
+    cover.hidden = true;
     imagesGrid.hidden = true;
   } else {
     dlVideo.hidden = true;
+    player.removeAttribute("src");
+    player.hidden = true;
   }
 
   if (data.images && data.images.length) {
+    player.hidden = true;
     imagesGrid.hidden = false;
     imagesGrid.innerHTML = data.images
       .map(
@@ -151,7 +164,8 @@ function render(data: DownloadResult) {
           }"><img src="${src}" alt="Image ${i + 1}" loading="lazy" /></a>`
       )
       .join("");
-    $<HTMLImageElement>("cover").src = data.images[0];
+    cover.src = data.images[0];
+    cover.hidden = false;
   }
 
   const dlAudio = $<HTMLAnchorElement>("dl-audio");

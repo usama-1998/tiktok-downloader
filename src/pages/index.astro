@@ -128,7 +128,14 @@ const faqLd = {
     <main>
       <section id="result" class="result-card" hidden>
         <div class="result-media">
-          <img id="cover" alt="Video thumbnail" />
+          <video
+            id="player"
+            class="player"
+            controls
+            playsinline
+            preload="metadata"
+            hidden></video>
+          <img id="cover" alt="Video thumbnail" hidden />
           <span id="duration" class="duration-pill"></span>
         </div>
         <div class="result-info">
