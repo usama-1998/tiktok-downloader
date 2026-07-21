@@ -75,24 +75,12 @@ export async function fetchViaTikwm(
     ? data.images.map((u: string) => absolutize(u, TIKWM_BASE)).filter(Boolean)
     : [];
 
-  const id = String(data.id ?? "");
-
-  // Prefer tikwm's own media endpoints for the video/audio download links:
-  // they serve `Content-Disposition: attachment`, so our redirect becomes a
-  // real file download. Direct TikTok CDN URLs (which tikwm sometimes returns
-  // for hdplay/play) lack that header and just play inline in the browser.
-  let noWatermark =
+  // The media source URLs (usually direct TikTok CDN links). These are proxied
+  // and streamed back through /api/stream with an attachment header, which is
+  // what actually forces a download — a redirect to these plays inline instead.
+  const noWatermark =
     absolutize(data.hdplay, TIKWM_BASE) || absolutize(data.play, TIKWM_BASE);
-  if (id && data.hdplay) {
-    noWatermark = `${TIKWM_BASE}/video/media/hdplay/${id}.mp4`;
-  } else if (id && data.play) {
-    noWatermark = `${TIKWM_BASE}/video/media/play/${id}.mp4`;
-  }
-
-  let musicUrl = absolutize(data.music || musicInfo.play, TIKWM_BASE);
-  if (id && musicUrl) {
-    musicUrl = `${TIKWM_BASE}/video/music/${id}.mp3`;
-  }
+  const musicUrl = absolutize(data.music || musicInfo.play, TIKWM_BASE);
 
   return {
     id: String(data.id ?? ""),
