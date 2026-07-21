@@ -18,8 +18,11 @@ export const GET: APIRoute = async ({ url }) => {
   }
 
   let host: string;
+  let origin: string;
   try {
-    host = new URL(src).hostname;
+    const parsed = new URL(src);
+    host = parsed.hostname;
+    origin = parsed.origin;
   } catch {
     return new Response("Invalid url", { status: 400 });
   }
@@ -27,28 +30,47 @@ export const GET: APIRoute = async ({ url }) => {
     return new Response("Host not allowed", { status: 403 });
   }
 
+  // Use a referer the media host will accept: TikTok's CDN wants a tiktok.com
+  // referer, while the resolver's own CDN wants its own origin (hotlink guard).
+  const referer = /tiktok/i.test(host) ? "https://www.tiktok.com/" : origin + "/";
+
   try {
     const upstream = await fetch(src, {
-      headers: { "User-Agent": DESKTOP_UA, Referer: "https://www.tiktok.com/" },
+      redirect: "follow",
+      headers: {
+        "User-Agent": DESKTOP_UA,
+        Referer: referer,
+        Accept: "*/*",
+      },
     });
+
+    // If the source can't be proxied, send the browser straight to it as a
+    // last resort rather than handing back an empty file.
     if (!upstream.ok || !upstream.body) {
-      return new Response("Upstream fetch failed", { status: 502 });
+      return new Response(null, { status: 302, headers: { Location: src } });
     }
 
     const type =
       upstream.headers.get("content-type") || "application/octet-stream";
-    const ext = type.includes("image") ? "jpg" : "mp4";
+    const ext = /image/i.test(type)
+      ? "jpg"
+      : /audio|mpeg|mp3/i.test(type)
+        ? "mp3"
+        : "mp4";
+
     const headers = new Headers({
       "Content-Type": type,
       "Content-Disposition": `attachment; filename="${filename}.${ext}"`,
+      "Cache-Control": "no-store",
     });
-    const len = upstream.headers.get("content-length");
-    if (len) headers.set("Content-Length", len);
 
-    // Pipe the upstream ReadableStream straight through to the client.
+    // Pipe the upstream stream straight through. We intentionally omit
+    // Content-Length so the response is chunked — a mismatched length can
+    // truncate the body to 0 on some serverless runtimes.
     return new Response(upstream.body, { status: 200, headers });
   } catch (err) {
     console.error("stream error:", err);
-    return new Response("Stream failed", { status: 500 });
+    // Fall back to a direct redirect so the user still gets the media.
+    return new Response(null, { status: 302, headers: { Location: src } });
   }
 };
