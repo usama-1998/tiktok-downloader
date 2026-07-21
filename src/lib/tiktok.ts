@@ -75,8 +75,24 @@ export async function fetchViaTikwm(
     ? data.images.map((u: string) => absolutize(u, TIKWM_BASE)).filter(Boolean)
     : [];
 
-  const noWatermark =
+  const id = String(data.id ?? "");
+
+  // Prefer tikwm's own media endpoints for the video/audio download links:
+  // they serve `Content-Disposition: attachment`, so our redirect becomes a
+  // real file download. Direct TikTok CDN URLs (which tikwm sometimes returns
+  // for hdplay/play) lack that header and just play inline in the browser.
+  let noWatermark =
     absolutize(data.hdplay, TIKWM_BASE) || absolutize(data.play, TIKWM_BASE);
+  if (id && data.hdplay) {
+    noWatermark = `${TIKWM_BASE}/video/media/hdplay/${id}.mp4`;
+  } else if (id && data.play) {
+    noWatermark = `${TIKWM_BASE}/video/media/play/${id}.mp4`;
+  }
+
+  let musicUrl = absolutize(data.music || musicInfo.play, TIKWM_BASE);
+  if (id && musicUrl) {
+    musicUrl = `${TIKWM_BASE}/video/music/${id}.mp3`;
+  }
 
   return {
     id: String(data.id ?? ""),
@@ -90,7 +106,7 @@ export async function fetchViaTikwm(
     music: {
       title: musicInfo.title || "",
       author: musicInfo.author || "",
-      url: absolutize(data.music || musicInfo.play, TIKWM_BASE),
+      url: musicUrl,
     },
     stats: {
       likes: data.digg_count ?? null,
@@ -256,9 +272,11 @@ export async function resolve(rawUrl: string): Promise<DownloadResult | null> {
   return buildResult(aweme);
 }
 
-/** Host allow-list for the streaming proxy (prevents open-proxy abuse). */
+/** Host allow-list for the download redirector (prevents open-redirect abuse). */
 export function isAllowedMediaHost(host: string): boolean {
-  return /(tiktok|tiktokcdn|ibyteimg|byteoversea|muscdn|tikwm|akamaized)\.(com|net)$/i.test(
+  // `tiktok[\w-]*` covers tiktok.com, tiktokv.com, tiktokcdn.com and regional
+  // variants such as tiktokcdn-us.com / tiktokcdn-eu.com.
+  return /(^|\.)(tiktok[\w-]*|ibyteimg|byteoversea|muscdn|tikwm|akamaized)\.(com|net)$/i.test(
     host
   );
 }
