@@ -29,29 +29,38 @@ const toastContainer = $<HTMLDivElement>("toast-container");
 
 type ToastType = "success" | "error" | "info";
 const TOAST_ICONS: Record<ToastType, string> = {
-  success: "✅",
-  error: "⚠️",
-  info: "ℹ️",
+  success: "✓",
+  error: "!",
+  info: "i",
 };
 
 function toast(message: string, type: ToastType = "info", duration = 3500) {
   const el = document.createElement("div");
   el.className = `toast toast-${type}`;
-  el.innerHTML = `<span class="toast-icon">${TOAST_ICONS[type]}</span><span class="toast-msg"></span>`;
+  el.innerHTML = `
+    <span class="toast-icon" aria-hidden="true">${TOAST_ICONS[type]}</span>
+    <span class="toast-msg"></span>
+    <button class="toast-close" aria-label="Dismiss">&times;</button>
+    <span class="toast-bar"></span>`;
   (el.querySelector(".toast-msg") as HTMLElement).textContent = message;
+  (el.querySelector(".toast-bar") as HTMLElement).style.animationDuration =
+    `${duration}ms`;
   toastContainer.appendChild(el);
 
   // Trigger the enter transition on the next frame.
   requestAnimationFrame(() => el.classList.add("show"));
 
+  let timer = 0;
   const remove = () => {
+    clearTimeout(timer);
     el.classList.remove("show");
+    el.classList.add("hide");
     el.addEventListener("transitionend", () => el.remove(), { once: true });
     // Safety net in case the transition doesn't fire.
     setTimeout(() => el.remove(), 400);
   };
   el.addEventListener("click", remove);
-  setTimeout(remove, duration);
+  timer = window.setTimeout(remove, duration);
 }
 
 function setLoading(on: boolean) {
