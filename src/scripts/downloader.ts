@@ -24,17 +24,36 @@ const form = $<HTMLFormElement>("download-form");
 const urlInput = $<HTMLInputElement>("url");
 const submitBtn = $<HTMLButtonElement>("submit-btn");
 const pasteBtn = $<HTMLButtonElement>("paste-btn");
-const errorEl = $<HTMLParagraphElement>("error");
 const resultEl = $<HTMLElement>("result");
+const toastContainer = $<HTMLDivElement>("toast-container");
 
-function showError(msg: string) {
-  errorEl.textContent = msg;
-  errorEl.hidden = false;
+type ToastType = "success" | "error" | "info";
+const TOAST_ICONS: Record<ToastType, string> = {
+  success: "✅",
+  error: "⚠️",
+  info: "ℹ️",
+};
+
+function toast(message: string, type: ToastType = "info", duration = 3500) {
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span class="toast-icon">${TOAST_ICONS[type]}</span><span class="toast-msg"></span>`;
+  (el.querySelector(".toast-msg") as HTMLElement).textContent = message;
+  toastContainer.appendChild(el);
+
+  // Trigger the enter transition on the next frame.
+  requestAnimationFrame(() => el.classList.add("show"));
+
+  const remove = () => {
+    el.classList.remove("show");
+    el.addEventListener("transitionend", () => el.remove(), { once: true });
+    // Safety net in case the transition doesn't fire.
+    setTimeout(() => el.remove(), 400);
+  };
+  el.addEventListener("click", remove);
+  setTimeout(remove, duration);
 }
-function clearError() {
-  errorEl.hidden = true;
-  errorEl.textContent = "";
-}
+
 function setLoading(on: boolean) {
   submitBtn.disabled = on;
   submitBtn.classList.toggle("loading", on);
@@ -106,24 +125,38 @@ pasteBtn.addEventListener("click", async () => {
     if (text) {
       urlInput.value = text.trim();
       urlInput.focus();
+      toast("Link pasted", "success", 2000);
+    } else {
+      toast("Clipboard is empty", "info", 2000);
     }
   } catch {
     urlInput.focus();
+    toast("Couldn't read clipboard, please paste manually", "info");
   }
+});
+
+// A download link was clicked (video, audio, or a slideshow image).
+document.addEventListener("click", (e) => {
+  const target = (e.target as HTMLElement).closest(
+    "a.download-link, .images-grid a"
+  );
+  if (target) toast("Download started", "info", 2000);
 });
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  clearError();
   resultEl.hidden = true;
   // Stop any previously playing video so its audio doesn't linger.
   const prevPlayer = document.getElementById("player") as HTMLVideoElement | null;
   if (prevPlayer) prevPlayer.pause();
 
   const url = urlInput.value.trim();
-  if (!url) return;
+  if (!url) {
+    toast("Please paste a TikTok link first", "info");
+    return;
+  }
   if (!/tiktok\.com/i.test(url)) {
-    showError("That doesn't look like a TikTok link. Please paste a valid URL.");
+    toast("That doesn't look like a TikTok link", "error");
     return;
   }
 
@@ -136,12 +169,13 @@ form.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) {
-      showError(data.error || "Could not fetch this video. Please try again.");
+      toast(data.error || "Could not fetch this video. Please try again.", "error", 5000);
       return;
     }
     render(data as DownloadResult);
+    toast("Video ready. Tap Download to save it.", "success");
   } catch {
-    showError("Network error. Please check your connection and try again.");
+    toast("Network error. Please check your connection and try again.", "error", 5000);
   } finally {
     setLoading(false);
   }

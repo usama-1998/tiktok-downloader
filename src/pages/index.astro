@@ -1,7 +1,7 @@
 ---
 import "../styles/global.css";
 
-const title = "TikTok Downloader — No Watermark, Full HD Quality";
+const title = "TikTok Downloader: No Watermark, Full HD Quality";
 const description =
   "Download TikTok videos without watermark in full HD quality. Free, fast, no login and no app required. Just paste a link and save the clean video.";
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
@@ -86,7 +86,7 @@ const faqLd = {
       <div class="badge">✨ No watermark · Full HD</div>
       <h1>TikTok Video Downloader</h1>
       <p class="subtitle">
-        Paste a TikTok link and download the video in full quality — no
+        Paste a TikTok link and download the video in full quality. No
         watermark, no login, no limits.
       </p>
 
@@ -121,8 +121,6 @@ const faqLd = {
           <span class="spinner" aria-hidden="true"></span>
         </button>
       </form>
-
-      <p id="error" class="error" role="alert" hidden></p>
     </header>
 
     <main>
@@ -228,6 +226,13 @@ const faqLd = {
         </a>
       </p>
     </footer>
+
+    <div
+      id="toast-container"
+      class="toast-container"
+      role="status"
+      aria-live="polite"
+    ></div>
 
     <script>
       import "../scripts/downloader.ts";

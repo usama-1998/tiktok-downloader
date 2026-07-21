@@ -77,7 +77,7 @@ export async function fetchViaTikwm(
 
   // The media source URLs (usually direct TikTok CDN links). These are proxied
   // and streamed back through /api/stream with an attachment header, which is
-  // what actually forces a download — a redirect to these plays inline instead.
+  // what actually forces a download. A redirect to these plays inline instead.
   const noWatermark =
     absolutize(data.hdplay, TIKWM_BASE) || absolutize(data.play, TIKWM_BASE);
   const musicUrl = absolutize(data.music || musicInfo.play, TIKWM_BASE);
