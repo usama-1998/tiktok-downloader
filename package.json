@@ -1,24 +1,27 @@
 {
   "name": "tiktok-downloader",
   "version": "1.0.0",
-  "description": "One-page website to download TikTok videos without watermark in full quality",
-  "main": "server.js",
+  "description": "One-page Astro website to download TikTok videos without watermark in full quality",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=18.20.8"
   },
   "keywords": [
     "tiktok",
     "downloader",
     "no-watermark",
-    "video"
+    "astro",
+    "netlify"
   ],
   "license": "MIT",
   "dependencies": {
-    "express": "^4.19.2"
+    "@astrojs/netlify": "^6.5.10",
+    "astro": "^5.14.1"
   }
 }

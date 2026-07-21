@@ -1,11 +1,33 @@
-const form = document.getElementById("download-form");
-const urlInput = document.getElementById("url");
-const submitBtn = document.getElementById("submit-btn");
-const pasteBtn = document.getElementById("paste-btn");
-const errorEl = document.getElementById("error");
-const resultEl = document.getElementById("result");
+// Client-side logic for the downloader form. Astro bundles this automatically.
 
-function showError(msg) {
+interface DownloadResult {
+  id: string;
+  description: string;
+  author: { name: string; username: string; avatar: string | null };
+  music: { url: string | null };
+  stats: {
+    likes: number | null;
+    comments: number | null;
+    shares: number | null;
+    plays: number | null;
+  };
+  cover: string | null;
+  duration: number | null;
+  video: { noWatermark: string | null };
+  images: string[];
+}
+
+const $ = <T extends HTMLElement>(id: string) =>
+  document.getElementById(id) as T;
+
+const form = $<HTMLFormElement>("download-form");
+const urlInput = $<HTMLInputElement>("url");
+const submitBtn = $<HTMLButtonElement>("submit-btn");
+const pasteBtn = $<HTMLButtonElement>("paste-btn");
+const errorEl = $<HTMLParagraphElement>("error");
+const resultEl = $<HTMLElement>("result");
+
+function showError(msg: string) {
   errorEl.textContent = msg;
   errorEl.hidden = false;
 }
@@ -13,28 +35,29 @@ function clearError() {
   errorEl.hidden = true;
   errorEl.textContent = "";
 }
-
-function setLoading(on) {
+function setLoading(on: boolean) {
   submitBtn.disabled = on;
   submitBtn.classList.toggle("loading", on);
 }
 
-function fmt(n) {
+function fmt(n: number | null): string | null {
   if (n == null) return null;
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
   if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
   return String(n);
 }
 
-function fmtDuration(s) {
+function fmtDuration(s: number | null): string {
   if (!s) return "";
   const m = Math.floor(s / 60);
   const sec = String(s % 60).padStart(2, "0");
   return `${m}:${sec}`;
 }
 
-function streamUrl(src, filename) {
-  return `/api/stream?url=${encodeURIComponent(src)}&filename=${encodeURIComponent(filename)}`;
+function streamUrl(src: string, filename: string): string {
+  return `/api/stream?url=${encodeURIComponent(src)}&filename=${encodeURIComponent(
+    filename
+  )}`;
 }
 
 pasteBtn.addEventListener("click", async () => {
@@ -73,7 +96,7 @@ form.addEventListener("submit", async (e) => {
       showError(data.error || "Could not fetch this video. Please try again.");
       return;
     }
-    render(data);
+    render(data as DownloadResult);
   } catch {
     showError("Network error. Please check your connection and try again.");
   } finally {
@@ -81,34 +104,34 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-function render(data) {
+function render(data: DownloadResult) {
   const baseName = `tiktok_${data.author.username || data.id}`;
 
-  document.getElementById("cover").src = data.cover || "";
-  const durEl = document.getElementById("duration");
+  $<HTMLImageElement>("cover").src = data.cover || "";
+  const durEl = $<HTMLSpanElement>("duration");
   durEl.textContent = fmtDuration(data.duration);
   durEl.hidden = !data.duration;
 
-  document.getElementById("avatar").src = data.author.avatar || "";
-  document.getElementById("author-name").textContent = data.author.name || "Unknown";
-  document.getElementById("author-user").textContent = data.author.username
+  $<HTMLImageElement>("avatar").src = data.author.avatar || "";
+  $("author-name").textContent = data.author.name || "Unknown";
+  $("author-user").textContent = data.author.username
     ? "@" + data.author.username
     : "";
-  document.getElementById("desc").textContent = data.description || "";
+  $("desc").textContent = data.description || "";
 
-  const statPairs = [
+  const statPairs: [string, number | null][] = [
     ["❤️", data.stats.likes],
     ["💬", data.stats.comments],
     ["🔁", data.stats.shares],
     ["▶️", data.stats.plays],
   ];
-  document.getElementById("stats").innerHTML = statPairs
+  $("stats").innerHTML = statPairs
     .filter(([, v]) => v != null)
     .map(([icon, v]) => `<span>${icon} ${fmt(v)}</span>`)
     .join("");
 
-  const dlVideo = document.getElementById("dl-video");
-  const imagesGrid = document.getElementById("images-grid");
+  const dlVideo = $<HTMLAnchorElement>("dl-video");
+  const imagesGrid = $<HTMLDivElement>("images-grid");
 
   if (data.video.noWatermark) {
     dlVideo.hidden = false;
@@ -118,21 +141,20 @@ function render(data) {
     dlVideo.hidden = true;
   }
 
-  // Photo (slideshow) posts
   if (data.images && data.images.length) {
     imagesGrid.hidden = false;
     imagesGrid.innerHTML = data.images
       .map(
         (src, i) =>
-          `<a href="${streamUrl(src, `${baseName}_${i + 1}`)}" download title="Download image ${i + 1}">
-             <img src="${src}" alt="Image ${i + 1}" loading="lazy" />
-           </a>`
+          `<a href="${streamUrl(src, `${baseName}_${i + 1}`)}" download title="Download image ${
+            i + 1
+          }"><img src="${src}" alt="Image ${i + 1}" loading="lazy" /></a>`
       )
       .join("");
-    document.getElementById("cover").src = data.images[0];
+    $<HTMLImageElement>("cover").src = data.images[0];
   }
 
-  const dlAudio = document.getElementById("dl-audio");
+  const dlAudio = $<HTMLAnchorElement>("dl-audio");
   if (data.music && data.music.url) {
     dlAudio.hidden = false;
     dlAudio.href = streamUrl(data.music.url, `${baseName}_audio`);

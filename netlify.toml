@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# The @astrojs/netlify adapter wires up on-demand routes as Netlify Functions
+# automatically during the build — no manual redirects or function config needed.

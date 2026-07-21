@@ -1,0 +1,212 @@
+---
+import "../styles/global.css";
+
+const title = "TikTok Downloader — No Watermark, Full HD Quality";
+const description =
+  "Download TikTok videos without watermark in full HD quality. Free, fast, no login and no app required. Just paste a link and save the clean video.";
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+const faq = [
+  {
+    q: "How do I download a TikTok video without watermark?",
+    a: "Copy the video link from TikTok (Share → Copy link), paste it into the box on this page, and press Download. You'll get the original video with no watermark in full quality.",
+  },
+  {
+    q: "Is it free and do I need an account?",
+    a: "Yes, it's completely free. There's no account, no app to install, and no limits.",
+  },
+  {
+    q: "Can I download the audio or photo slideshows too?",
+    a: "Yes. When available, you can download the original sound as an MP3, and photo (slideshow) posts let you save each image.",
+  },
+];
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "TikTok Downloader",
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "Any",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  description,
+  url: canonical,
+};
+
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faq.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  })),
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="TikTok Downloader" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⬇️</text></svg>"
+    />
+
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(jsonLd)}
+    />
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify(faqLd)}
+    />
+  </head>
+  <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+
+    <header class="hero">
+      <div class="badge">✨ No watermark · Full HD</div>
+      <h1>TikTok Video Downloader</h1>
+      <p class="subtitle">
+        Paste a TikTok link and download the video in full quality — no
+        watermark, no login, no limits.
+      </p>
+
+      <form id="download-form" class="input-card" autocomplete="off">
+        <div class="input-row">
+          <svg class="link-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+            ></path>
+            <path
+              d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+            ></path>
+          </svg>
+          <input
+            id="url"
+            type="text"
+            name="url"
+            inputmode="url"
+            placeholder="Paste TikTok link here (e.g. https://www.tiktok.com/@user/video/…)"
+            aria-label="TikTok video URL"
+            required
+          />
+          <button
+            type="button"
+            id="paste-btn"
+            class="ghost-btn"
+            title="Paste from clipboard">Paste</button
+          >
+        </div>
+        <button type="submit" id="submit-btn" class="primary-btn">
+          <span class="btn-label">Download</span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <p id="error" class="error" role="alert" hidden></p>
+    </header>
+
+    <main>
+      <section id="result" class="result-card" hidden>
+        <div class="result-media">
+          <img id="cover" alt="Video thumbnail" />
+          <span id="duration" class="duration-pill"></span>
+        </div>
+        <div class="result-info">
+          <div class="author">
+            <img id="avatar" class="avatar" alt="" />
+            <div>
+              <div id="author-name" class="author-name"></div>
+              <div id="author-user" class="author-user"></div>
+            </div>
+          </div>
+          <p id="desc" class="desc"></p>
+          <div id="stats" class="stats"></div>
+          <div class="download-actions">
+            <a id="dl-video" class="primary-btn download-link" download
+              >⬇️ Download video (no watermark)</a
+            >
+            <a id="dl-audio" class="ghost-btn download-link" download hidden
+              >🎵 Download audio (MP3)</a
+            >
+          </div>
+          <div id="images-grid" class="images-grid" hidden></div>
+        </div>
+      </section>
+
+      <section class="how">
+        <h2>How to download a TikTok video</h2>
+        <ol class="steps">
+          <li>
+            <span class="step-num">1</span> Copy the video link from the TikTok app
+            or website (Share → Copy link).
+          </li>
+          <li>
+            <span class="step-num">2</span> Paste it into the box above and press
+            <strong>Download</strong>.
+          </li>
+          <li>
+            <span class="step-num">3</span> Save the clean, watermark-free video in
+            full quality.
+          </li>
+        </ol>
+      </section>
+
+      <section class="features">
+        <div class="feature">
+          <span>🚫</span>
+          <h3>No Watermark</h3>
+          <p>Get the original clip with the TikTok logo removed.</p>
+        </div>
+        <div class="feature">
+          <span>🎬</span>
+          <h3>Full Quality</h3>
+          <p>Highest-resolution source available, up to HD.</p>
+        </div>
+        <div class="feature">
+          <span>⚡</span>
+          <h3>Fast &amp; Free</h3>
+          <p>No account, no software, no limits.</p>
+        </div>
+        <div class="feature">
+          <span>📱</span>
+          <h3>Any Device</h3>
+          <p>Works on phone, tablet and desktop.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Please only download content you own or have permission to use. Respect
+        creators' rights and TikTok's Terms of Service.
+      </p>
+      <p class="muted">
+        This tool is for personal use and is not affiliated with TikTok.
+      </p>
+    </footer>
+
+    <script>
+      import "../scripts/downloader.ts";
+    </script>
+  </body>
+</html>

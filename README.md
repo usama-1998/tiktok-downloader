@@ -1,7 +1,8 @@
 # TikTok Downloader
 
-A clean, one-page website to download TikTok videos **without watermark** in
-**full quality**. Paste a link, get the video — no login, no ads, no limits.
+A clean, one-page **[Astro](https://astro.build)** website to download TikTok
+videos **without watermark** in **full quality**. Paste a link, get the video —
+no login, no ads, no limits. Built to deploy to **Netlify** in one click.
 
 ![No watermark · Full HD](https://img.shields.io/badge/no%20watermark-full%20HD-fe2c55)
 
@@ -11,59 +12,70 @@ A clean, one-page website to download TikTok videos **without watermark** in
   watermarked share file.
 - 🎬 **Full quality** — picks the highest-bitrate / HD source available.
 - 🎵 **Audio + photo posts** — grab the original sound (MP3) or slideshow images.
-- ⚡ **Fast & free** — no account, no third-party redirects.
+- ⚡ **Fast & free** — no account, no API key, no third-party redirects.
+- 🔎 **SEO-friendly** — the homepage is prerendered to static HTML with meta,
+  Open Graph, Twitter, and JSON-LD structured data (zero client framework JS).
 - 📱 **Responsive** — works on phone, tablet and desktop.
 
 ## How it works
 
-The browser can't fetch TikTok media directly (CORS + watermark), so a tiny
-Express backend does two things:
+Astro is **static-first**: the homepage is prerendered to plain HTML for fast
+loads and great SEO. The two backend routes opt out of prerendering and run
+on-demand as **Netlify Functions** — no persistent server, no API key.
 
-1. `POST /api/download` — resolves short links, extracts the video id, and
-   queries TikTok's mobile feed API to get the clean, no-watermark URL plus
-   metadata.
-2. `GET /api/stream` — proxies the chosen media through the server so the
-   browser saves it as a file (with a clean filename) instead of opening it.
-   The proxy is locked to TikTok CDN hosts to avoid open-proxy abuse.
+- `POST /api/download` — resolves short links, extracts the video id, and
+  queries TikTok's mobile feed API to get the clean, no-watermark URL plus
+  metadata (`src/pages/api/download.ts`).
+- `GET /api/stream` — proxies the chosen media through the function so the
+  browser saves it as a file (with a clean filename) instead of opening it.
+  The proxy is locked to TikTok CDN hosts to avoid open-proxy abuse
+  (`src/pages/api/stream.ts`).
+
+Shared resolver logic lives in `src/lib/tiktok.ts`.
 
 ## Getting started
 
-Requires **Node.js 18+** (uses the built-in global `fetch`).
+Requires **Node.js 18.20.8+**.
 
 ```bash
 npm install
-npm start
+npm run dev      # http://localhost:4321
 ```
 
-Then open <http://localhost:3000>.
-
-For development with auto-reload:
+Build and preview a production bundle:
 
 ```bash
-npm run dev
+npm run build
+npm run preview
 ```
 
-Change the port with the `PORT` environment variable:
+## Deploy to Netlify
 
-```bash
-PORT=8080 npm start
-```
+The [`@astrojs/netlify`](https://docs.astro.build/en/guides/integrations-guide/netlify/)
+adapter is already configured, so deployment needs zero extra setup:
 
-## Usage
+1. Push this repo to GitHub.
+2. In Netlify, **Add new site → Import an existing project** and pick the repo.
+3. Netlify reads `netlify.toml` (build command `npm run build`, publish `dist`)
+   and wires up the API routes as Functions automatically. Click **Deploy**.
 
-1. Copy a video link from TikTok (**Share → Copy link**). Short links like
-   `https://vt.tiktok.com/…` work too.
-2. Paste it into the box and press **Download**.
-3. Save the watermark-free video, audio, or images.
+Optionally set a `SITE_URL` environment variable to your production URL so the
+canonical/Open Graph tags point at the right place.
 
 ## Project structure
 
 ```
-├── server.js          # Express server: resolver + streaming proxy
-├── public/
-│   ├── index.html     # One-page UI
-│   ├── styles.css     # Styling
-│   └── app.js         # Front-end logic
+├── astro.config.mjs        # Astro + Netlify adapter config
+├── netlify.toml            # Netlify build settings
+├── src/
+│   ├── pages/
+│   │   ├── index.astro      # One-page UI (prerendered static, SEO tags)
+│   │   └── api/
+│   │       ├── download.ts  # POST — resolve no-watermark URL (on-demand)
+│   │       └── stream.ts    # GET  — streaming download proxy (on-demand)
+│   ├── lib/tiktok.ts        # Shared TikTok resolver
+│   ├── scripts/downloader.ts# Client-side form logic
+│   └── styles/global.css    # Styling
 ├── package.json
 └── README.md
 ```
@@ -71,7 +83,7 @@ PORT=8080 npm start
 ## Notes & disclaimer
 
 - TikTok's private API is unofficial and can change; if a request fails, the
-  endpoints in `server.js` may need updating.
+  endpoints in `src/lib/tiktok.ts` may need updating.
 - Videos that are private, deleted, or region-locked can't be fetched.
 - Please only download content you own or have permission to use, and respect
   creators' rights and [TikTok's Terms of Service](https://www.tiktok.com/legal/terms-of-service).

@@ -1,4 +1,24 @@
+# build output
+dist/
+.output/
+
+# netlify
+.netlify/
+
+# astro
+.astro/
+
+# dependencies
 node_modules/
+
+# logs
 npm-debug.log*
-.DS_Store
+yarn-debug.log*
+yarn-error.log*
+
+# environment
 .env
+.env.production
+
+# macOS
+.DS_Store
