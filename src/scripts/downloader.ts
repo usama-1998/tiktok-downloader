@@ -66,6 +66,40 @@ function inlineUrl(src: string | null): string {
   return src ? `/api/stream?inline=1&url=${encodeURIComponent(src)}` : "";
 }
 
+// Give the player a thumbnail no matter what: probe the cover URL (direct,
+// then proxied) and use the first that actually loads; if neither does, seek
+// the video slightly so the browser renders its first frame instead of black.
+function setPoster(player: HTMLVideoElement, coverSrc: string | null) {
+  player.removeAttribute("poster");
+
+  const showFirstFrame = () => {
+    const nudge = () => {
+      try {
+        if (player.currentTime === 0 && player.paused) player.currentTime = 0.1;
+      } catch {
+        /* ignore */
+      }
+    };
+    if (player.readyState >= 1) nudge();
+    else player.addEventListener("loadedmetadata", nudge, { once: true });
+  };
+
+  const candidates = coverSrc ? [coverSrc, inlineUrl(coverSrc)] : [];
+  const tryNext = (i: number) => {
+    if (i >= candidates.length) {
+      showFirstFrame();
+      return;
+    }
+    const probe = new Image();
+    probe.onload = () => {
+      player.poster = candidates[i];
+    };
+    probe.onerror = () => tryNext(i + 1);
+    probe.src = candidates[i];
+  };
+  tryNext(0);
+}
+
 pasteBtn.addEventListener("click", async () => {
   try {
     const text = await navigator.clipboard.readText();
@@ -149,7 +183,7 @@ function render(data: DownloadResult) {
     dlVideo.hidden = false;
     dlVideo.href = streamUrl(data.video.noWatermark, baseName);
     player.src = data.video.noWatermark;
-    if (data.cover) player.poster = inlineUrl(data.cover);
+    setPoster(player, data.cover);
     player.hidden = false;
     cover.hidden = true;
     imagesGrid.hidden = true;
